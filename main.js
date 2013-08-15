@@ -15,7 +15,7 @@ var totalBricksHit;
 var levels = 2;
 var currentLevel = 1;
 var angleX = 2;
-var angleY = -6;
+var angleY = -8;
 var brickWidth = 50;
 var brickHeight = 30;
 var ballrad = 6;
@@ -28,6 +28,8 @@ var inboxboundy;
 
 var cursor;
 var requestId;
+
+var ballSpeed = 25;
 
 
 /************************************/
@@ -166,7 +168,7 @@ var maxSpeed = 5;
 function doRestart() {
 	stop = false;
 	document.getElementById("btn").innerText = "stop";
-	tev = setInterval(moveBall, 25);
+	tev = setInterval(moveBall, ballSpeed);
 }
 
 function doStop() {
@@ -235,25 +237,25 @@ Manager.prototype = {
 
 		if (isBrick) {
 			// limite droite de la brique
-			if (this.myball.posX >= brick.brickboundx) {
+			if (nballx >= brick.brickboundx) {
 				this.myball.posvX = -this.myball.posvX;
 				nballx = this.myball.posX;
 			}
 			//else
 			// limite gauche de la brique
-			if (this.myball.posX <= brick.inbrickboundx) {
+			if (nballx <= brick.inbrickboundx) {
 				this.myball.posvX = -this.myball.posvX;
 				nballx = this.myball.posX;
 			}
 			//else
 			// limite supérieure de la brique
-			if (this.myball.posY >= brick.inbrickboundy) {
+			if (nbally>= brick.inbrickboundy) {
 				this.myball.posvY = -this.myball.posvY;
 				nbally = this.myball.posY;
 			}
 			//else
 			// limite inférieure de la brique
-			if (this.myball.posY <= brick.brickboundy) {
+			if (nbally <= brick.brickboundy) {
 				this.myball.posvY = -this.myball.posvY;
 				nbally = this.myball.posY;
 			}
@@ -285,7 +287,7 @@ Manager.prototype = {
 				}
 				else {
 					nbally = boxboundy;
-					this.myball.posvY = -this.myball.posvY;
+					this.myball.posvY = -this.myball.posvY ;//this.pad.getNewAngle(nballx, this.myball.posvY); 
 				}
 			}
 		}
@@ -390,6 +392,47 @@ Pad.prototype = {
 	},
 	clear: function() {
 		//ctx.clearRect(this.padX - ball.rad + 1, this.padY - 1, this.padWidth + ball.rad + 1, this.padHeight * 2);
+	},
+	getNewAngle: function(posX, angleBall) {
+		var angle = angleY;
+		var angle10Left = this.padX + (this.padWidth * (10/100));
+		var angle20Left = this.padX + (this.padWidth* (20/100));
+		var angle30Left = this.padX + (this.padWidth* (30/100));
+		var angle40Left = this.padX + (this.padWidth* (40/100));
+		var angle10Right = this.padX + this.padWidth - (this.padWidth * (10/100));
+		var angle20Right = this.padX + this.padWidth - (this.padWidth* (20/100));
+		var angle30Right = this.padX + this.padWidth - (this.padWidth* (30/100));
+		var angle40Right = this.padX + this.padWidth - (this.padWidth* (40/100));
+		
+		if (posX < angle10Left) {
+			angle = angleBall * (40/100);	
+		}
+		//if (posX > angle10Left && posX <= angle20Left) {
+			//angle = 5 //angleBall * (50/100);	
+		//}
+		//if (posX > angle30Left && posX <= angle30Left) {
+		//	angle = angle * (60/100);
+		//}
+		//if (posX > angle30Left && posX <= angle40Left) {
+		//	angle = angle * (80/100);
+		//}
+		if (posX > angle20Left && posX <= angle20Right) {
+			angle = angleY;
+		}
+		//if (posX > angle40Right && posX <= angle30Right) {
+		//	angle = angle * (80/100);
+		//}
+		//if (posX > angle30Right && posX <= angle20Right) {
+		//	angle = angle * (60/100);
+		//}
+		//if (posX > angle20Right && posX <= angle10Right) {
+		//	angle = 5//angleBall * (50/100);
+		//}
+		if (posX > angle10Right) {
+			angle = angleBall * (40/100) ;
+		}
+		
+		return angle;
 	}
 }
 

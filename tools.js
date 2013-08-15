@@ -21,7 +21,7 @@ function getXMLHttpRequest() {
 
 function loadFile(fileName, callback) {
 	var xhr = getXMLHttpRequest();
-	var level = "http://localhost:80/Brick/" + fileName;
+	var level = "http://localhost:80/Arkanodid/" + fileName;
 	xhr.open("GET", level, false);
 	xhr.send(""); 
 	
