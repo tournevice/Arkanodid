@@ -2,7 +2,6 @@ var canvas;
 var ctx;
 var tev;
 var stop;
-var speed = 20;
 var boxx = 20;
 var boxy = 30;
 var boxwidth = 700;
@@ -15,9 +14,11 @@ var totalBricks;
 var totalBricksHit;
 var levels = 2;
 var currentLevel = 1;
-var angle = -8;
+var angleX = 2;
+var angleY = -6;
 var brickWidth = 50;
 var brickHeight = 30;
+var ballrad = 6;
 
 
 var boxboundx;
@@ -34,146 +35,6 @@ var requestId;
 /************************************/
 
 
-
-
-var ball = {
-	posX: 375,
-	posY: 530,
-	posvX: 4,
-	posvY: angle,
-	rad: 6,
-	init: function() {
-		this.posX = 375;
-		this.posY = 530;
-		posvX = 4;
-		posvY = angle;
-		cursor = manager.pad;
-		this.move();
-	},
-	draw : function() {
-		ctx.fillStyle = "black";
-		ctx.beginPath();
-		ctx.arc(this.posX, this.posY, this.rad, 0, Math.PI * 2, true);
-		ctx.strokeRect(boxx, boxy, boxwidth, boxheight);
-		ctx.fill();
-		
-		//cursor.draw();
-		drawBricks();
-	},
-	move: function() {
-		ctx.clearRect(boxx, boxy, boxwidth, boxheight);
-		this.moveandcheck();
-		this.draw();
-	},
-	moveandcheck: function() {
-		// on anticipe le déplacement de la balle
-		// en x...
-		var nballx = this.posX + this.posvX;
-		// ... et en y
-		var nbally = this.posY + this.posvY;
-		
-		var isBrick = this.checkBrick(nballx, nbally);
-		var end = false;
-		if (isBrick) {
-			var end = endGame();
-			if (end) {
-				alert("Gagné! Score : " + score);
-				currentLevel += 1;
-				document.getElementById("currentLevel").innerText = currentLevel;
-				game();
-			}
-		}
-		
-		if (!end) {
-			// Rebond droit
-			if (nballx > boxboundx) {
-				this.posvX = -this.posvX;
-				nballx = boxboundx;
-			}
-			
-			// Rebond gauche
-			if (nballx < inboxboundx) {
-				nballx = inboxboundx;
-				this.posvX = -this.posvX;
-			}
-			
-			// Rebond haut
-			if (nbally < inboxboundy || isBrick) {
-				if (nbally < inboxboundy) {
-					nbally = inboxboundy;
-				}
-											
-				this.posvY = -this.posvY;
-			}
-			
-			var lost = false;
-			// Rebond bas
-			if (nbally > boxboundy) {
-				if (nballx < cursor.padX - ball.rad || nballx > cursor.padX + cursor.width + ball.rad) {
-					alert("Perdu! :(");
-					game();
-					lost = true;
-				}
-				else {
-					nbally = boxboundy;
-					var ecartGauche = Math.abs(cursor.padX - nballx);
-					var ecartDroit = Math.abs((cursor.padX + cursor.padWidth - nballx) - cursor.padWidth);
-					
-					if (ecartGauche >= 5 && ecartGauche < 10){
-						this.posvY = 4;
-						//this.posvX = -(Math.abs(this.posvX) - Math.floor(this.posvX * (43 / 100)) + 1);
-					}
-					else if (Math.abs(ecartGauche) < 5){
-						this.posvY = 2;
-						//this.posvX = -(Math.abs(this.posvX) - Math.floor(this.posvX * (28 / 100)) + 1);
-					}
-					else if (ecartDroit >= 5 && ecartDroit < 10) {
-						this.posvY = 4;
-						//this.posvX = -Math.floor(this.posvX * (43 / 100) + 1);
-					}
-					else if (Math.abs(ecartDroit) < 5) {
-						this.posvY = 2;
-						//this.posvX = -Math.floor(this.posvX * (28 / 100) + 1);
-					}
-					else {
-						this.posvY = 7;
-					}
-					
-					this.posvY = -this.posvY;
-				}
-			}
-			
-			if (!lost) {
-				this.posX = nballx;
-				this.posY = nbally;
-			}
-		}
-	},
-	checkBrick: function(nposx, nposy) {
-		var isBrick = false;
-		if (bricks != null) {
-			//this.posX = boxx + (this.width * x);
-			var x = Math.floor((nposx + ball.rad / 4 - boxx) / brickWidth);
-			//this.posY = boxy + (this.height * y);
-			var y = Math.floor((nposy + ball.rad / 4 - boxy) / brickHeight);
-			if (y >= 0 && x >= 0) {
-				isBrick = bricks[y][x] != "0";
-			}
-			
-			if (isBrick) {
-				if (bricks[y][x] != "x") {
-					score += parseInt(bricks[y][x]);
-					document.getElementById("currentScore").innerText = score;
-					bricks[y][x] = "0";
-					totalBricksHit += 1;
-				}
-			}
-		}
-		
-		return isBrick;
-	}
-}
-
 /************************************/
 /* General functions                */
 /************************************/			
@@ -183,8 +44,14 @@ function brick(value, x, y) {
 	this.width = brickWidth;
 	this.height = brickHeight;
 	this.value = value;
-	this.posX = boxx + (this.width * x);
-	this.posY = boxy + (this.height * y);
+	this.posXInf = boxx + (this.width * x);
+	this.posYInf = boxy + (this.height * y);
+	this.posXSup = this.posXInf + this.width;
+	this.posYSup = this.posYInf - this.height;
+	this.brickboundx = this.posXSup + ballrad;
+	this.brickboundy = this.posYSup + ballrad;
+	this.inbrickboundx = this.posXInf - ballrad;
+	this.inbrickboundy = this.posYInf - ballrad;
 }
 
 
@@ -197,10 +64,10 @@ brick.prototype = {
 			ctx.fillStyle = "lightgray";
 		}
 		ctx.lineWidth=1;
-		ctx.fillRect(this.posX, this.posY,this.width, this.height);
+		ctx.fillRect(this.posXInf, this.posYInf,this.width, this.height);
 		
 		//ctx.fill();
-		ctx.strokeRect(this.posX, this.posY,this.width, this.height);
+		ctx.strokeRect(this.posXInf, this.posYInf,this.width, this.height);
 	},
 	clear: function() {
 		//alert("clearing " + this.value + " at position " + this.posX + "," + this.posY);
@@ -241,26 +108,6 @@ function drawBricks() {
 	}
 }
  
-function readDatas(oData) {
-	var level = oData;
-	var levels = level.split(/[\r\n]+/);
-	var cntBricks = 0;
-	bricks = new Array(levels.length);
-	for (var l = 0; l < levels.length; l++) {
-		bricks[l] = new Array(levels[l].length);
-		for (var b = 0; b < levels[l].length; b++) {
-			bricks[l][b] = levels[l][b];
-			if (levels[l][b] != "0" && levels[l][b] != "x") {
-				cntBricks += 1;
-			}
-		}
-	}
-	totalBricks = cntBricks;
-	drawBricks();
-}
-
-
-
 function moveBall() {
 	manager.moveBall();
 }
@@ -319,7 +166,7 @@ var maxSpeed = 5;
 function doRestart() {
 	stop = false;
 	document.getElementById("btn").innerText = "stop";
-	tev = setInterval(moveBall, 150);
+	tev = setInterval(moveBall, 25);
 }
 
 function doStop() {
@@ -358,11 +205,11 @@ function whatKey() {
   
 function Manager() {
 	this.pad = new Pad(335, 560, 80, 10); 
-	this.myball = new Ball(375, 530, 4, angle, 6);
-	boxboundx = boxwidth + boxx - this.myball.rad;
-	boxboundy = this.pad.padY - this.myball.rad;
-	inboxboundx = boxx + this.myball.rad;
-	inboxboundy = boxy + this.myball.rad;
+	this.myball = new Ball(375, 530, ballrad);
+	boxboundx = boxwidth + boxx - ballrad;
+	boxboundy = this.pad.padY - ballrad;
+	inboxboundx = boxx + ballrad;
+	inboxboundy = boxy + ballrad;
 }
 
 Manager.prototype = {
@@ -375,7 +222,7 @@ Manager.prototype = {
 		drawBricks();
 	},
 	moveandcheck: function() {
-		// on anticipe le déplacement de la balle
+		// on anticipe le dï¿½placement de la balle
 		// en x...
 		var nballx = this.myball.posX + this.myball.posvX;
 		// ... et en y
@@ -383,36 +230,63 @@ Manager.prototype = {
 		
 		var brick = this.getBrick(nballx, nbally);
 		var isBrick = this.checkBrick(brick);
-
 		
-		// Rebond droit
-		if (nballx > boxboundx || isBrick) {
-			this.myball.posvX = -this.myball.posvX;
-			nballx = boxboundx;
-		}
-		
-		// Rebond gauche
-		if (nballx < inboxboundx || isBrick) {
-			nballx = inboxboundx;
-			this.myball.posvX = -this.myball.posvX;
-		}
-		
-		// Rebond haut
-		if (nbally < inboxboundy || isBrick) {
-			nbally = inboxboundy;						
-			this.myball.posvY = -this.myball.posvY;
-		}
-			
 		var lost = false;
-		// Rebond bas
-		if (nbally > boxboundy) {
-			if (nballx < this.pad.padX - this.myball.rad || nballx > this.pad.padX + this.pad.padWidth + this.myball.rad) {
-				//alert("Perdu! :(");
-				lost = true;
+
+		if (isBrick) {
+			// limite droite de la brique
+			if (this.myball.posX >= brick.brickboundx) {
+				this.myball.posvX = -this.myball.posvX;
+				nballx = this.myball.posX;
 			}
-			else {
-				nbally = boxboundy;
+			//else
+			// limite gauche de la brique
+			if (this.myball.posX <= brick.inbrickboundx) {
+				this.myball.posvX = -this.myball.posvX;
+				nballx = this.myball.posX;
+			}
+			//else
+			// limite supÃ©rieure de la brique
+			if (this.myball.posY >= brick.inbrickboundy) {
 				this.myball.posvY = -this.myball.posvY;
+				nbally = this.myball.posY;
+			}
+			//else
+			// limite infÃ©rieure de la brique
+			if (this.myball.posY <= brick.brickboundy) {
+				this.myball.posvY = -this.myball.posvY;
+				nbally = this.myball.posY;
+			}
+		}
+		else {
+			// Rebond droit
+			if (nballx > boxboundx || isBrick) {
+				this.myball.posvX = -this.myball.posvX;
+				nballx = boxboundx;
+			}
+			
+			// Rebond gauche
+			if (nballx < inboxboundx || isBrick) {
+				nballx = inboxboundx;
+				this.myball.posvX = -this.myball.posvX;
+			}
+			
+			// Rebond haut
+			if (nbally < inboxboundy || isBrick) {
+				nbally = inboxboundy;						
+				this.myball.posvY = -this.myball.posvY;
+			}
+				
+			// Rebond bas
+			if (nbally > boxboundy) {
+				if (nballx < this.pad.padX - this.myball.rad || nballx > this.pad.padX + this.pad.padWidth + this.myball.rad) {
+					//alert("Perdu! :(");
+					lost = true;
+				}
+				else {
+					nbally = boxboundy;
+					this.myball.posvY = -this.myball.posvY;
+				}
 			}
 		}
 		
@@ -456,11 +330,11 @@ Manager.prototype = {
 }
 
 
-function Ball(x,y,width,height, rad) {
+function Ball(x,y,rad) {
 	this.posX = x;
 	this.posY = y;
-	this.posvX = 4;
-	this.posvY = angle;
+	this.posvX = angleX;
+	this.posvY = angleY;
 	this.rad = rad;
 }
 
@@ -491,18 +365,18 @@ function Pad(x,y,width,height) {
 
 Pad.prototype = {
 	move: function() {
-		// on anticipe le déplacement du pad (sur l'axe des x)
+		// on anticipe le dï¿½placement du pad (sur l'axe des x)
 		var ncursorx = this.padX;
 		ncursorx += velX;
 		
-		// vérification limite gauche
-		if (ncursorx < boxx + ball.rad) {
-			ncursorx = boxx + ball.rad;
+		// vï¿½rification limite gauche
+		if (ncursorx < boxx + ballrad) {
+			ncursorx = boxx + ballrad;
 		}
 		
-		// vérification limite droite
-		if (ncursorx > boxwidth + boxx - this.padWidth - ball.rad) {
-			ncursorx = boxwidth + boxx - this.padWidth - ball.rad;
+		// vï¿½rification limite droite
+		if (ncursorx > boxwidth + boxx - this.padWidth - ballrad) {
+			ncursorx = boxwidth + boxx - this.padWidth - ballrad;
 		}
 
 		this.clear();
