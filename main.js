@@ -48,11 +48,11 @@ function brick(value, x, y) {
 	this.posXInf = boxx + (this.width * x);
 	this.posYInf = boxy + (this.height * y);
 	this.posXSup = this.posXInf + this.width;
-	this.posYSup = this.posYInf - this.height;
+	this.posYSup = this.posYInf + this.height;
 	this.brickboundx = this.posXSup + ballrad;
-	this.brickboundy = this.posYSup + ballrad;
+	this.inbrickboundy = this.posYInf + ballrad;
 	this.inbrickboundx = this.posXInf - ballrad;
-	this.inbrickboundy = this.posYInf - ballrad;
+	this.brickboundy = this.posYSup - ballrad;
 }
 
 
@@ -113,12 +113,8 @@ function moveBall() {
 	manager.moveBall();
 }
 
-function endGame() {
-	var end = false;
-	if (totalBricksHit == totalBricks) {
-		end = true;
-	}
-	return end;
+function winGame() {
+	return totalBricksHit == totalBricks;
 }
 
 /************************************/
@@ -132,51 +128,85 @@ var manager;
   window.requestAnimationFrame = requestAnimationFrame;
 })();
 
-function init() {
-  canvas = document.getElementById("canvas");
-  ctx = canvas.getContext("2d");
+window.addEventListener('load', function() {
+	canvas = document.getElementById('canvas');
+	if (!canvas || !canvas.getContext) {
+		return;
+	}
+	
+	ctx = canvas.getContext('2d');
+	if (!ctx) {
+		return;
+	}
+	
+	init();
+}, false);
 
-	initManager();
-	//requestAnimationFrame(movePad);
-}
+window.addEventListener("keydown", function (e) {
+  keys[e.keyCode] = true;
+  // Top
+	if (keys[38]) {
+		if (stop) {
+			doRestart();
+		}
+	}
+});
+window.addEventListener("keyup", function (e) {
+  keys[e.keyCode] = false;
+});
 
-function initManager(){
+function init(){
+	manager = new Manager();
   clearInterval(tev);
-  manager = new Manager();
   var level = "level" + currentLevel + ".txt";
   stop = true;
   loadFile(level, fillBricks);
   
   ctx.strokeRect(boxx, boxy, boxwidth, boxheight);
+	manager.init();
+	if (score > highscore) {
+		highscore = score;
+	}
+	score = 0;
+	totalBricksHit = 0;
 	
-  manager.moveBall();
-  playLoop();
+	document.getElementById("highscore").innerText = highscore;
+	document.getElementById("currentScore").innerText = score;
+	document.getElementById("currentLevel").innerText = currentLevel;
 }
 
-window.addEventListener("keydown", function (e) {
-  keys[e.keyCode] = true;
-});
-window.addEventListener("keyup", function (e) {
-  keys[e.keyCode] = false;
-});
+function playLoop() {
+	whatKey();
+	manager.movePad();
+	requestId = requestAnimationFrame(playLoop);
+}
+  
+  
+function movePad() {
+	manager.movePad
+}
+
 
 var keys = [];
 var velX = 0;
 var maxSpeed = 5;
 
 function doRestart() {
+	init();
 	stop = false;
 	document.getElementById("btn").innerText = "stop";
 	tev = setInterval(moveBall, ballSpeed);
+	playLoop();
 }
 
 function doStop() {
+	//init();
+	stop = true;
 	window.cancelAnimationFrame(requestId);
 	clearInterval(tev);
 	document.getElementById("btn").innerText = "restart";
 	//window.removeEventListener('keydown', getKeyAndMove, false);
-	stop = true;
-	initManager();
+
 }
 
 function whatKey() {
@@ -185,13 +215,6 @@ function whatKey() {
 		//velX = -10;
 		if (velX > -maxSpeed) {
 		  velX -= 10;
-		}
-	}
-
-	// Top
-	if (keys[38]) {
-		if (stop) {
-			doRestart();
 		}
 	}
 	
@@ -205,15 +228,22 @@ function whatKey() {
 }
   
 function Manager() {
-	this.pad = new Pad(335, 560, 80, 10); 
-	this.myball = new Ball(375, 530, ballrad);
-	boxboundx = boxwidth + boxx - ballrad;
-	boxboundy = this.pad.padY - ballrad;
-	inboxboundx = boxx + ballrad;
-	inboxboundy = boxy + ballrad;
+
 }
 
 Manager.prototype = {
+	init: function() {
+		this.pad = new Pad(335, 560, 80, 10); 
+		this.myball = new Ball(375, 530, ballrad);
+		boxboundx = boxwidth + boxx - ballrad;
+		boxboundy = this.pad.padY - ballrad;
+		inboxboundx = boxx + ballrad;
+		inboxboundy = boxy + ballrad;
+		
+		this.myball.draw();
+		drawBricks();
+		this.pad.draw();
+	},
 	movePad: function() {
 		this.pad.move();
 	},
@@ -232,23 +262,24 @@ Manager.prototype = {
 		var brick = this.getBrick(nballx, nbally);
 		var isBrick = this.checkBrick(brick);
 		
+		var win = false;
 		var lost = false;
 
 		if (isBrick) {
 			// limite droite de la brique
-			if (nballx >= brick.brickboundx) {
+			if (nbally >= brick.inbrickboundy && nbally <= brick.brickboundy) {
 				this.myball.posvX = -this.myball.posvX;
 				nballx = this.myball.posX;
 			}
 			//else
 			// limite gauche de la brique
-			if (nballx <= brick.inbrickboundx) {
-				this.myball.posvX = -this.myball.posvX;
-				nballx = this.myball.posX;
-			}
+			//if (nballx >= brick.inbrickboundx) {
+			//	this.myball.posvX = -this.myball.posvX;
+			//	nballx = this.myball.posX;
+			//}
 			//else
 			// limite supérieure de la brique
-			if (nbally>= brick.inbrickboundy) {
+			else if (nbally>= brick.inbrickboundy) {
 				//this.myball.posvY = angleY;
 				//nbally = this.myball.posY - this.myball.posvY;
 				this.myball.posvY = -this.myball.posvY;
@@ -256,12 +287,14 @@ Manager.prototype = {
 			}
 			//else
 			// limite inférieure de la brique
-			if (nbally <= brick.brickboundy) {
+			else if (nbally <= brick.brickboundy) {
 				//this.myball.posvY = angleY;
 				//nbally = this.myball.posY - this.myball.posvY;
 				this.myball.posvY = -this.myball.posvY;
 				nbally = this.myball.posY;
 			}
+			
+			win = winGame();
 		}
 		else {
 			// Rebond droit
@@ -285,7 +318,6 @@ Manager.prototype = {
 			// Rebond bas (pad ou vide)
 			if (nbally > boxboundy) {
 				if (nballx < this.pad.padX - this.myball.rad || nballx > this.pad.padX + this.pad.padWidth + this.myball.rad) {
-					//alert("Perdu! :(");
 					lost = true;
 				}
 				else {
@@ -357,12 +389,20 @@ Manager.prototype = {
 		}
 		
 		if (!lost) {
-			this.myball.posX = nballx;
-			this.myball.posY = nbally;
+			if (win)
+			{
+				alert("Gagné!");
+				currentLevel += 1;
+				doStop();
+			}
+			else {
+				this.myball.posX = nballx;
+				this.myball.posY = nbally;
+			}
 		}
 		else {
+			alert("Perdu! :(");
 			doStop();
-			//playLoop();
 		}
 		
 	},
@@ -457,73 +497,8 @@ Pad.prototype = {
 	},
 	clear: function() {
 		//ctx.clearRect(this.padX - ball.rad + 1, this.padY - 1, this.padWidth + ball.rad + 1, this.padHeight * 2);
-	},
-	getNewAngle: function(posX, angleBall) {
-		var angle = angleY;
-		var angle10Left = this.padX + (this.padWidth * (10/100));
-		var angle20Left = this.padX + (this.padWidth* (20/100));
-		var angle30Left = this.padX + (this.padWidth* (30/100));
-		var angle40Left = this.padX + (this.padWidth* (40/100));
-		var angle10Right = this.padX + this.padWidth - (this.padWidth * (10/100));
-		var angle20Right = this.padX + this.padWidth - (this.padWidth* (20/100));
-		var angle30Right = this.padX + this.padWidth - (this.padWidth* (30/100));
-		var angle40Right = this.padX + this.padWidth - (this.padWidth* (40/100));
-		
-		if (posX < angle40Left) {
-			angle = angleBall * (40/100);	
-		}
-		//if (posX > angle10Left && posX <= angle20Left) {
-			//angle = 5 //angleBall * (50/100);	
-		//}
-		//if (posX > angle30Left && posX <= angle30Left) {
-		//	angle = angle * (60/100);
-		//}
-		//if (posX > angle30Left && posX <= angle40Left) {
-		//	angle = angle * (80/100);
-		//}
-		//if (posX > angle20Left && posX <= angle20Right) {
-		//	angle = angleY;
-		//}
-		//if (posX > angle40Right && posX <= angle30Right) {
-		//	angle = angle * (80/100);
-		//}
-		//if (posX > angle30Right && posX <= angle20Right) {
-		//	angle = angle * (60/100);
-		//}
-		//if (posX > angle20Right && posX <= angle10Right) {
-		//	angle = 5//angleBall * (50/100);
-		//}
-		//if (posX > angle10Right) {
-		//	angle = angleBall * (40/100) ;
-		//}
-		
-		return angle;
 	}
 }
 
-function playLoop() {
-	whatKey();
-	
-	manager.movePad();
-	requestId = requestAnimationFrame(playLoop);
-}
-  
-  
-function movePad() {
-	manager.movePad
-}
  
-
-function drawPad() {
-	cursor.draw();
-}
-
-function triggerEvent() {
-	if (!stop) {
-		doStop();
-	}
-	else {
-		doRestart();
-	}
-}
 
