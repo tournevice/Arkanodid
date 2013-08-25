@@ -15,7 +15,7 @@ var totalBricksHit;
 var levels = 2;
 var currentLevel = 1;
 var angleX = 2;
-var angleY = -8;
+var angleY = -4;
 var brickWidth = 50;
 var brickHeight = 30;
 var ballrad = 6;
@@ -29,8 +29,7 @@ var inboxboundy;
 var cursor;
 var requestId;
 
-var ballSpeed = 25;
-
+var ballSpeed = 10;
 
 /************************************/
 /* Objects                          */
@@ -250,36 +249,40 @@ Manager.prototype = {
 			//else
 			// limite supérieure de la brique
 			if (nbally>= brick.inbrickboundy) {
+				//this.myball.posvY = angleY;
+				//nbally = this.myball.posY - this.myball.posvY;
 				this.myball.posvY = -this.myball.posvY;
 				nbally = this.myball.posY;
 			}
 			//else
 			// limite inférieure de la brique
 			if (nbally <= brick.brickboundy) {
+				//this.myball.posvY = angleY;
+				//nbally = this.myball.posY - this.myball.posvY;
 				this.myball.posvY = -this.myball.posvY;
 				nbally = this.myball.posY;
 			}
 		}
 		else {
 			// Rebond droit
-			if (nballx > boxboundx || isBrick) {
+			if (nballx > boxboundx) {
 				this.myball.posvX = -this.myball.posvX;
 				nballx = boxboundx;
 			}
 			
 			// Rebond gauche
-			if (nballx < inboxboundx || isBrick) {
+			if (nballx < inboxboundx) {
 				nballx = inboxboundx;
 				this.myball.posvX = -this.myball.posvX;
 			}
 			
 			// Rebond haut
-			if (nbally < inboxboundy || isBrick) {
+			if (nbally < inboxboundy) {
 				nbally = inboxboundy;						
 				this.myball.posvY = -this.myball.posvY;
 			}
 				
-			// Rebond bas
+			// Rebond bas (pad ou vide)
 			if (nbally > boxboundy) {
 				if (nballx < this.pad.padX - this.myball.rad || nballx > this.pad.padX + this.pad.padWidth + this.myball.rad) {
 					//alert("Perdu! :(");
@@ -287,7 +290,68 @@ Manager.prototype = {
 				}
 				else {
 					nbally = boxboundy;
-					this.myball.posvY = -this.myball.posvY ;//this.pad.getNewAngle(nballx, this.myball.posvY); 
+					
+					var angle10Left = this.pad.padX + (this.pad.padWidth * (10/100));
+					var angle20Left = this.pad.padX + (this.pad.padWidth* (20/100));
+					var angle30Left = this.pad.padX + (this.pad.padWidth* (30/100));
+					var angle10Right = this.pad.padX + this.pad.padWidth - (this.pad.padWidth * (10/100));
+					var angle20Right = this.pad.padX + this.pad.padWidth - (this.pad.padWidth* (20/100));
+					var angle30Right = this.pad.padX + this.pad.padWidth - (this.pad.padWidth* (30/100));
+
+					if (((this.myball.posX >= angle20Left && this.myball.posX < angle30Left) && this.myball.posvX > 0) || ((this.myball.posX >= angle30Right && this.myball.posX < angle20Right) && this.myball.posvX < 0 )) {
+						if ((this.myball.posX >= angle20Left && this.myball.posX < angle30Left) && this.myball.posvX > 0) {
+							this.myball.posvX = -(Math.abs(angleX) + 1);
+							this.myball.posvY = -(Math.abs(angleY) - 1);
+						}
+						if ((this.myball.posX >= angle30Right && this.myball.posX < angle20Right) && this.myball.posvX < 0) {
+							
+							this.myball.posvX = Math.abs(angleX) + 1;
+							this.myball.posvY = -(Math.abs(angleY) - 1);
+						}
+						
+						nballx = this.myball.posX + this.myball.posvX;
+						nbally = this.myball.posY + this.myball.posvY;
+					}
+					else if (((this.myball.posX >= angle10Left && this.myball.posX < angle20Left) && this.myball.posvX > 0) || ((this.myball.posX >= angle20Right && this.myball.posX < angle10Right) && this.myball.posvX < 0 )) {
+						if ((this.myball.posX >= angle10Left && this.myball.posX < angle20Left) && this.myball.posvX > 0) {
+							this.myball.posvX = -(Math.abs(angleX) + 2);
+							this.myball.posvY = -(Math.abs(angleY) - 2);
+						}
+						if ((this.myball.posX >= angle20Right && this.myball.posX < angle10Right) && this.myball.posvX < 0) {
+							
+							this.myball.posvX = Math.abs(angleX) + 2;
+							this.myball.posvY = -(Math.abs(angleY) - 2);
+						}
+						
+						nballx = this.myball.posX + this.myball.posvX;
+						nbally = this.myball.posY + this.myball.posvY;
+					}
+					else if ((nballx < angle10Left && this.myball.posvX > 0) || (nballx > angle10Right && this.myball.posvX < 0 )) {
+						if (nballx < angle10Left && this.myball.posvX > 0) {
+							this.myball.posvX = -(Math.abs(angleX) + 3);
+							this.myball.posvY = -(Math.abs(angleY) - 3);
+						}
+						if (nballx > angle10Right && this.myball.posvX < 0) {
+							
+							this.myball.posvX = Math.abs(angleX) + 3;
+							this.myball.posvY = -(Math.abs(angleY) - 3);
+						}
+						
+						nballx = this.myball.posX + this.myball.posvX;
+						nbally = this.myball.posY + this.myball.posvY;
+					}
+					else {
+						this.myball.posvY = angleY;
+						if (this.myball.posvX < 0) {
+							this.myball.posvX = -angleX;
+						}
+						else {
+							this.myball.posvX = angleX;
+						}
+						nbally = this.myball.posY + this.myball.posvY;
+						nabllx = this.myball.posX + this.myball.posvX;
+						//this.myball.posvX = -this.myball.posvX;
+					}
 				}
 			}
 		}
@@ -300,6 +364,7 @@ Manager.prototype = {
 			doStop();
 			//playLoop();
 		}
+		
 	},
 	getBrick : function(nposx, nposy) {
 		var brick = null;
@@ -404,7 +469,7 @@ Pad.prototype = {
 		var angle30Right = this.padX + this.padWidth - (this.padWidth* (30/100));
 		var angle40Right = this.padX + this.padWidth - (this.padWidth* (40/100));
 		
-		if (posX < angle10Left) {
+		if (posX < angle40Left) {
 			angle = angleBall * (40/100);	
 		}
 		//if (posX > angle10Left && posX <= angle20Left) {
@@ -416,9 +481,9 @@ Pad.prototype = {
 		//if (posX > angle30Left && posX <= angle40Left) {
 		//	angle = angle * (80/100);
 		//}
-		if (posX > angle20Left && posX <= angle20Right) {
-			angle = angleY;
-		}
+		//if (posX > angle20Left && posX <= angle20Right) {
+		//	angle = angleY;
+		//}
 		//if (posX > angle40Right && posX <= angle30Right) {
 		//	angle = angle * (80/100);
 		//}
@@ -428,9 +493,9 @@ Pad.prototype = {
 		//if (posX > angle20Right && posX <= angle10Right) {
 		//	angle = 5//angleBall * (50/100);
 		//}
-		if (posX > angle10Right) {
-			angle = angleBall * (40/100) ;
-		}
+		//if (posX > angle10Right) {
+		//	angle = angleBall * (40/100) ;
+		//}
 		
 		return angle;
 	}
