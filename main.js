@@ -143,16 +143,32 @@ window.addEventListener('load', function() {
 }, false);
 
 window.addEventListener("keydown", function (e) {
-  keys[e.keyCode] = true;
-  // Top
-	if (keys[38]) {
+  keys[e.keyCode] = false;
+  keys[37] = false;
+  keys[38] = false;
+  keys[39] = false;
+  
+	// Top
+	if (e.keyCode == 38) {
 		if (stop) {
 			doRestart();
 		}
 	}
+	
+  	if (e.keyCode == 37) {
+  		keys[37] = true;
+  	}
+  	
+  	if (e.keyCode == 39) {
+  		keys[39] = true;
+  	}
 });
 window.addEventListener("keyup", function (e) {
   keys[e.keyCode] = false;
+  
+  keys[37] = false;
+  keys[38] = false;
+  keys[39] = false;
 });
 
 function init(){
