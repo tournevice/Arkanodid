@@ -1,6 +1,7 @@
 var canvas;
 var ctx;
 var tev;
+var tevBonus;
 var stop;
 var boxx = 20;
 var boxy = 30;
@@ -18,8 +19,11 @@ var angleX = 2;
 var angleY = -4;
 var brickWidth = 50;
 var brickHeight = 30;
+var padWidth = 80;
+var padHeight = 10;
 var ballrad = 6;
-
+var bonusWidth = 15;
+var bonusHeight = 10;
 
 var boxboundx;
 var boxboundy;
@@ -30,12 +34,52 @@ var cursor;
 var requestId;
 
 var ballSpeed = 10;
+var bonusSpeed = 20;
 var lost = false;
 
 /************************************/
 /* General functions                */
 /************************************/			
 
+function bonus(id, bonusMethod, posX, posY) {
+	this.image = new Image();
+	this.image.src = id + '.gif';
+	this.funcBonus = bonusMethod;
+	this.width = bonusWidth;
+	this.height = bonusHeight;
+	this.posX = posX + brickWidth / 2;
+	this.posY = posY;
+	this.activated = true;
+}
+
+bonus.prototype = {
+	draw: function() {
+		ctx.drawImage(this.image, this.posX, this.posY, this.width, this.height);
+	},
+	move: function() {
+		this.posY += 1;
+		this.draw();
+		if (manager.pad.padY == this.posY) {
+			clearInterval(tevBonus);
+			if (this.posX >= manager.pad.padX && this.posX <= manager.pad.padX + padWidth) {
+				this.funcBonus();
+			}
+		}
+	},
+	play: function() {
+		if (this.activated) {
+			tevBonus = setInterval(
+				     (function(self) {         //Self-executing func which takes 'this' as self
+				         return function() {   //Return a function in the context of 'self'
+				             self.move(); //Thing you wanted to run as non-window 'this'
+				         }
+				     })(this),
+				     this.INTERVAL     //normal interval, 'this' scope not impacted here.
+				 ); 
+		}
+		//this.funcBonus();
+	}
+}
 
 function brick(value, x, y) {
 	this.width = brickWidth;
@@ -62,10 +106,6 @@ function brick(value, x, y) {
 
 brick.prototype = {
 	draw: function() {
-		//ctx.fillRect(this.posXInf, this.posYInf,this.width, this.height);
-		
-		//ctx.fill();
-		//ctx.strokeRect(this.posXInf, this.posYInf,this.width, this.height);
 		if (this.image != null) {
 			if (this.currentBreaks >= 1) {
 				this.image.src = 'brick' + this.value + '_broken' + this.currentBreaks + '.gif';
@@ -98,11 +138,19 @@ function fillBricks(oData) {
 			//bricks[l][b] = levels[l][b];
 			bricks[l][b] = new brick(levels[l][b], b, l);
 			if (levels[l][b] != "0" && levels[l][b] != "x") {
+				if (levels[l][b] == 2) {
+					bricks[l][b].bonus = new bonus('bonus1', bonusScore, bricks[l][b].posXInf, bricks[l][b].posYSup);
+				}
 				cntBricks += 1;
 			}
 		}
 	}
 	totalBricks = cntBricks;
+}
+
+function bonusScore() {
+	score += 15;
+	document.getElementById("currentScore").innerText = score;
 }
 
 function drawBricks() {
@@ -229,6 +277,7 @@ function doStop() {
 	stop = true;
 	window.cancelAnimationFrame(requestId);
 	clearInterval(tev);
+	clearInterval(tevBonus);
 	document.getElementById("btn").innerText = "restart";
 	//window.removeEventListener('keydown', getKeyAndMove, false);
 
@@ -259,7 +308,7 @@ function Manager() {
 
 Manager.prototype = {
 	init: function() {
-		this.pad = new Pad(335, 560, 80, 10); 
+		this.pad = new Pad(335, 560, padWidth, padHeight); 
 		this.myball = new Ball(375, 530, ballrad);
 		boxboundx = boxwidth + boxx - ballrad * 2;
 		boxboundy = this.pad.padY - ballrad;
@@ -281,8 +330,8 @@ Manager.prototype = {
 	moveBall: function() {
 		this.moveandcheck();
 		this.drawBackground();
-		this.myball.move();
 		drawBricks();
+		this.myball.move();
 	},
 	moveandcheck: function() {
 		// on anticipe le d�placement de la balle
@@ -459,6 +508,9 @@ Manager.prototype = {
 					document.getElementById("currentScore").innerText = score;
 					brick.currentBreaks += 1;
 					if (brick.currentBreaks == brick.value) {
+						if (brick.bonus != null) {
+							brick.bonus.play();
+						}
 						brick.value = "0";
 						totalBricksHit += 1;
 					}
