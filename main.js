@@ -30,11 +30,7 @@ var cursor;
 var requestId;
 
 var ballSpeed = 10;
-
-/************************************/
-/* Objects                          */
-/************************************/
-
+var lost = false;
 
 /************************************/
 /* General functions                */
@@ -53,22 +49,32 @@ function brick(value, x, y) {
 	this.inbrickboundy = this.posYInf + ballrad;
 	this.inbrickboundx = this.posXInf - ballrad;
 	this.brickboundy = this.posYSup - ballrad;
+	if (value != 0) {
+		this.image = new Image();
+		this.image.src = 'brick' + value + '.gif';
+		if (value != 'x') {
+			this.currentBreaks = 0;
+		}
+	}
+	
 }
 
 
 brick.prototype = {
 	draw: function() {
-		if (this.value != "x") {
-			ctx.fillStyle = brickColor[parseInt(this.value) - 1];
-		}
-		else {
-			ctx.fillStyle = "lightgray";
-		}
-		ctx.lineWidth=1;
-		ctx.fillRect(this.posXInf, this.posYInf,this.width, this.height);
+		//ctx.fillRect(this.posXInf, this.posYInf,this.width, this.height);
 		
 		//ctx.fill();
-		ctx.strokeRect(this.posXInf, this.posYInf,this.width, this.height);
+		//ctx.strokeRect(this.posXInf, this.posYInf,this.width, this.height);
+		if (this.image != null) {
+			if (this.currentBreaks >= 1) {
+				this.image.src = 'brick' + this.value + '_broken' + this.currentBreaks + '.gif';
+				ctx.drawImage(this.image, this.posXInf, this.posYInf,this.width, this.height);
+			}
+			else {
+				ctx.drawImage(this.image, this.posXInf, this.posYInf,this.width, this.height);
+			}
+		}
 	},
 	clear: function() {
 		//alert("clearing " + this.value + " at position " + this.posX + "," + this.posY);
@@ -183,9 +189,12 @@ function init(){
 	if (score > highscore) {
 		highscore = score;
 	}
-	score = 0;
-	totalBricksHit = 0;
+	if (lost) {
+		score = 0;
+	}
 	
+	totalBricksHit = 0;
+	lost = false;
 	document.getElementById("highscore").innerText = highscore;
 	document.getElementById("currentScore").innerText = score;
 	document.getElementById("currentLevel").innerText = currentLevel;
@@ -244,27 +253,34 @@ function whatKey() {
 }
   
 function Manager() {
-
+	this.image = new Image();
+	this.image.src = 'background_level' + currentLevel + '.gif';
 }
 
 Manager.prototype = {
 	init: function() {
 		this.pad = new Pad(335, 560, 80, 10); 
 		this.myball = new Ball(375, 530, ballrad);
-		boxboundx = boxwidth + boxx - ballrad;
+		boxboundx = boxwidth + boxx - ballrad * 2;
 		boxboundy = this.pad.padY - ballrad;
 		inboxboundx = boxx + ballrad;
 		inboxboundy = boxy + ballrad;
 		
+		this.drawBackground();
 		this.myball.draw();
 		drawBricks();
 		this.pad.draw();
+		//ctx.fill();
+	},
+	drawBackground: function() {
+		ctx.drawImage(this.image, boxx, boxy, boxwidth, boxheight);
 	},
 	movePad: function() {
 		this.pad.move();
 	},
 	moveBall: function() {
 		this.moveandcheck();
+		this.drawBackground();
 		this.myball.move();
 		drawBricks();
 	},
@@ -279,7 +295,6 @@ Manager.prototype = {
 		var isBrick = this.checkBrick(brick);
 		
 		var win = false;
-		var lost = false;
 
 		if (isBrick) {
 			// limite droite de la brique
@@ -442,8 +457,11 @@ Manager.prototype = {
 				if (brick.value != "x") {
 					score += parseInt(brick.value);
 					document.getElementById("currentScore").innerText = score;
-					brick.value = "0";
-					totalBricksHit += 1;
+					brick.currentBreaks += 1;
+					if (brick.currentBreaks == brick.value) {
+						brick.value = "0";
+						totalBricksHit += 1;
+					}
 				}
 			}
 		}
@@ -459,23 +477,27 @@ function Ball(x,y,rad) {
 	this.posvX = angleX;
 	this.posvY = angleY;
 	this.rad = rad;
+	this.image = new Image();
+	this.image.src = 'ball.gif';
 }
 
 Ball.prototype = {
 	move: function() {
-		this.clear();
+		//this.clear();
 		//this.moveandcheck();
 		this.draw();
 	},
 	draw: function() {
-		ctx.fillStyle = "black";
-		ctx.beginPath();
-		ctx.arc(this.posX, this.posY, this.rad, 0, Math.PI * 2, true);
-		ctx.fill();
+		//ctx.fillStyle = "black";
+		//ctx.beginPath();
+		//ctx.arc(this.posX, this.posY, this.rad, 0, Math.PI * 2, true);
+		ctx.drawImage(this.image, this.posX, this.posY, this.rad *2, this.rad * 2);
+		//ctx.fill();
+		
 	},
 	clear: function() {
 		//ctx.clearRect(this.posX, this.posY, this.rad, this.rad);
-		ctx.clearRect(boxx, boxy, boxwidth, boxheight);
+		//ctx.clearRect(boxx, boxy, this.rad *2, this.rad * 2);
 	}
 }
  
@@ -484,6 +506,8 @@ function Pad(x,y,width,height) {
 	this.padY = y;
 	this.padWidth = width;
 	this.padHeight = height;
+	this.image = new Image();
+	this.image.src = 'pad.gif';
 }
 
 Pad.prototype = {
@@ -509,7 +533,8 @@ Pad.prototype = {
 		velX = 0;
 	},
 	draw: function() {
-		ctx.fillRect(this.padX, this.padY, this.padWidth, this.padHeight);
+		//ctx.fillRect(this.padX, this.padY, this.padWidth, this.padHeight);
+		ctx.drawImage(this.image, this.padX, this.padY, this.padWidth, this.padHeight);
 	},
 	clear: function() {
 		//ctx.clearRect(this.padX - ball.rad + 1, this.padY - 1, this.padWidth + ball.rad + 1, this.padHeight * 2);
