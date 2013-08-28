@@ -3,10 +3,10 @@ var ctx;
 var tev;
 var tevBonus;
 var stop;
-var boxx = 20;
-var boxy = 30;
-var boxwidth = 700;
-var boxheight = 550;
+var boxx = 2;
+var boxy = 10;
+var boxwidth = 400;
+var boxheight = 320;
 var bricks;
 var brickColor = ["blue", "yellow", "red", "green"];
 var score = 0;
@@ -17,11 +17,11 @@ var levels = 2;
 var currentLevel = 1;
 var angleX = 2;
 var angleY = -4;
-var brickWidth = 50;
-var brickHeight = 30;
-var padWidth = 80;
-var padHeight = 10;
-var ballrad = 6;
+var brickWidth = 40;
+var brickHeight = 20;
+var padWidth = 50;
+var padHeight = 10
+var ballrad = 4;
 var bonusWidth = 15;
 var bonusHeight = 10;
 
@@ -33,7 +33,7 @@ var inboxboundy;
 var cursor;
 var requestId;
 
-var ballSpeed = 10;
+var ballSpeed = 15;
 var bonusSpeed = 20;
 var lost = false;
 
@@ -232,7 +232,8 @@ function init(){
   stop = true;
   loadFile(level, fillBricks);
   
-  ctx.strokeRect(boxx, boxy, boxwidth, boxheight);
+  document.getElementById("area").style.backgroundImage = "url('background_level" + currentLevel + ".gif')";
+  //ctx.strokeRect(boxx, boxy, boxwidth, boxheight);
 	manager.init();
 	if (score > highscore) {
 		highscore = score;
@@ -267,7 +268,7 @@ var maxSpeed = 5;
 function doRestart() {
 	init();
 	stop = false;
-	document.getElementById("btn").innerText = "stop";
+	//document.getElementById("btn").innerText = "stop";
 	tev = setInterval(moveBall, ballSpeed);
 	playLoop();
 }
@@ -278,7 +279,7 @@ function doStop() {
 	window.cancelAnimationFrame(requestId);
 	clearInterval(tev);
 	clearInterval(tevBonus);
-	document.getElementById("btn").innerText = "restart";
+	//document.getElementById("btn").innerText = "restart";
 	//window.removeEventListener('keydown', getKeyAndMove, false);
 
 }
@@ -302,36 +303,39 @@ function whatKey() {
 }
   
 function Manager() {
-	this.image = new Image();
-	this.image.src = 'background_level' + currentLevel + '.gif';
+	//this.image = new Image();
+	
 }
 
 Manager.prototype = {
 	init: function() {
-		this.pad = new Pad(335, 560, padWidth, padHeight); 
-		this.myball = new Ball(375, 530, ballrad);
+		var posPadX = (boxwidth / 2) - (padWidth / 4);
+		var posPadY = boxheight - boxy/ 2;
+		var posBallX = posPadX + (padWidth / 2);
+		var posBallY = posPadY - 20;
+		this.pad = new Pad(posPadX, posPadY, padWidth, padHeight); 
+		this.myball = new Ball(posBallX, posBallY, ballrad);
 		boxboundx = boxwidth + boxx - ballrad * 2;
 		boxboundy = this.pad.padY - ballrad;
 		inboxboundx = boxx + ballrad;
 		inboxboundy = boxy + ballrad;
 		
-		this.drawBackground();
+		//this.drawBackground();
 		this.myball.draw();
 		drawBricks();
 		this.pad.draw();
 		//ctx.fill();
 	},
 	drawBackground: function() {
-		ctx.drawImage(this.image, boxx, boxy, boxwidth, boxheight);
+		//ctx.drawImage(this.image, boxx, boxy, boxwidth, boxheight);
 	},
 	movePad: function() {
 		this.pad.move();
 	},
 	moveBall: function() {
 		this.moveandcheck();
-		this.drawBackground();
-		drawBricks();
 		this.myball.move();
+		drawBricks();
 	},
 	moveandcheck: function() {
 		// on anticipe le d�placement de la balle
@@ -347,7 +351,7 @@ Manager.prototype = {
 
 		if (isBrick) {
 			// limite droite de la brique
-			if (nbally >= brick.inbrickboundy && nbally <= brick.brickboundy) {
+			if (nbally > brick.inbrickboundy && nbally < brick.brickboundy) {
 				this.myball.posvX = -this.myball.posvX;
 				nballx = this.myball.posX;
 			}
@@ -535,7 +539,7 @@ function Ball(x,y,rad) {
 
 Ball.prototype = {
 	move: function() {
-		//this.clear();
+		this.clear();
 		//this.moveandcheck();
 		this.draw();
 	},
@@ -543,12 +547,12 @@ Ball.prototype = {
 		//ctx.fillStyle = "black";
 		//ctx.beginPath();
 		//ctx.arc(this.posX, this.posY, this.rad, 0, Math.PI * 2, true);
-		ctx.drawImage(this.image, this.posX, this.posY, this.rad *2, this.rad * 2);
+		ctx.drawImage(this.image, this.posX, this.posY, this.rad * 2, this.rad * 2);
 		//ctx.fill();
 		
 	},
 	clear: function() {
-		//ctx.clearRect(this.posX, this.posY, this.rad, this.rad);
+		ctx.clearRect(boxx, boxy, boxwidth, boxheight);
 		//ctx.clearRect(boxx, boxy, this.rad *2, this.rad * 2);
 	}
 }

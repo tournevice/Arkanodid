@@ -5,8 +5,8 @@
 			.none {border-style:none;}
 			.dotted {border-style:dotted;}
 			.dashed {border-style:dashed;}
-			.solid {border-style:solid; border-width:5px; width: 900; height: 600;}
-			.double {border-style:double;}
+			.solid {border-style:solid; border-width:1px; margin-left: 225; margin-top: 50; width:402; height:350}
+			.double {border-style:double;
 			.groove {border-style:groove;}
 			.ridge {border-style:ridge;}
 			.inset {border-style:inset;}
@@ -20,20 +20,13 @@
 		<script type="text/javascript" src="main.js"></script>
 	</header>
 	<body>
-		<div id="global" width="900">
-			<canvas id="canvas" width="750" height="600">
-				canvas non support�
+		<div id="area" class="solid" >
+			<span style="margin-left: 5">Highscore : <span id="highscore">0</span></span>
+			<span style="margin-left: 90">Score : <span id="currentScore">0</span></span>
+			<span style="float: right;margin-right: 5">Niveau : <span id="currentLevel">1</span></span>
+			<canvas id="canvas" width="400" height="330">
+				canvas non supporté
 			</canvas>
-			<div id="score">
-				<div id="stat">
-					<p>Niveau : <span id="currentLevel">1</span></p>
-					<p>Score : <span id="currentScore">0</span></p>
-					<p>Highscore : <span id="highscore">0</span></p>
-				</div>
-				<div id="btn" onclick="triggerEvent();">
-					start
-				</div>
-			</div>
 		</div>
 	</body>
 </html>
