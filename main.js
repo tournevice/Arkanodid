@@ -1,14 +1,13 @@
 var canvas;
 var ctx;
 var tev;
-var tevBonus;
 var stop;
 var boxx = 2;
 var boxy = 10;
 var boxwidth = 400;
 var boxheight = 320;
 var bricks;
-var brickColor = ["blue", "yellow", "red", "green"];
+var brickBonus = [bonusScore, bonusShot];
 var score = 0;
 var highscore = 0;
 var totalBricks;
@@ -37,6 +36,12 @@ var ballSpeed = 15;
 var bonusSpeed = 20;
 var lost = false;
 
+var padImg = 'pad.gif';
+var padShotImg = 'pad_shot.gif';
+
+var shoots = [];
+var bonuss = [];
+
 /************************************/
 /* General functions                */
 /************************************/			
@@ -50,6 +55,7 @@ function bonus(id, bonusMethod, posX, posY) {
 	this.posX = posX + brickWidth / 2;
 	this.posY = posY;
 	this.activated = true;
+	this.tevBonus;
 }
 
 bonus.prototype = {
@@ -57,10 +63,14 @@ bonus.prototype = {
 		ctx.drawImage(this.image, this.posX, this.posY, this.width, this.height);
 	},
 	move: function() {
+		this.clear();
 		this.posY += 1;
 		this.draw();
 		if (manager.pad.padY == this.posY) {
-			clearInterval(tevBonus);
+			this.clear();
+			clearInterval(this.tevBonus);
+			var i = bonuss.indexOf(this);
+			bonuss.splice(i, 1);
 			if (this.posX >= manager.pad.padX && this.posX <= manager.pad.padX + padWidth) {
 				this.funcBonus();
 			}
@@ -68,16 +78,19 @@ bonus.prototype = {
 	},
 	play: function() {
 		if (this.activated) {
-			tevBonus = setInterval(
+			this.tevBonus = setInterval(
 				     (function(self) {         //Self-executing func which takes 'this' as self
 				         return function() {   //Return a function in the context of 'self'
 				             self.move(); //Thing you wanted to run as non-window 'this'
 				         }
 				     })(this),
-				     this.INTERVAL     //normal interval, 'this' scope not impacted here.
+				     10     //normal interval, 'this' scope not impacted here.
 				 ); 
 		}
 		//this.funcBonus();
+	},
+	clear: function() {
+		ctx.clearRect(this.posX, this.posY, this.width, this.height);
 	}
 }
 
@@ -117,7 +130,7 @@ brick.prototype = {
 		}
 	},
 	clear: function() {
-		//alert("clearing " + this.value + " at position " + this.posX + "," + this.posY);
+		ctx.clearRect(this.posXInf, this.posYInf,this.width, this.height);
 	}
 }
 
@@ -136,27 +149,55 @@ function fillBricks(oData) {
 		bricks[l] = new Array(levels[l].length);
 		for (var b = 0; b < levels[l].length; b++) {
 			//bricks[l][b] = levels[l][b];
-			bricks[l][b] = new brick(levels[l][b], b, l);
-			if (levels[l][b] != "0" && levels[l][b] != "x") {
-				if (levels[l][b] == 2) {
-					bricks[l][b].bonus = new bonus('bonus1', bonusScore, bricks[l][b].posXInf, bricks[l][b].posYSup);
+			if (levels[l][b] == "0") {
+				bricks[l][b] = null;
+			}
+			else {
+				bricks[l][b] = new brick(levels[l][b], b, l);
+				if (levels[l][b] != "x") {
+					var randomnumber = Math.floor(Math.random() * brickBonus.length);
+					//if (levels[l][b] == 2) {
+						bricks[l][b].bonus = new bonus('bonus1', brickBonus[1], bricks[l][b].posXInf, bricks[l][b].posYSup);
+						bonuss.push(bricks[l][b].bonus);
+					//}
+					cntBricks += 1;
 				}
-				cntBricks += 1;
 			}
 		}
 	}
 	totalBricks = cntBricks;
 }
 
+function clearAllIntervals() {
+	for (var s = 0; s < shoots.length; s++) {
+		clearInterval(shoots[s].tevShoot);
+	}
+	
+	for (var b = 0; b < bonuss.length; b++) {
+		clearInterval(bonuss[b].tevBonus);
+	}
+}
+
+//////////////////////////////////
+// Bonus Methods
+//////////////////////////////////
+
 function bonusScore() {
 	score += 15;
 	document.getElementById("currentScore").innerText = score;
 }
 
+function bonusShot() {
+	manager.pad.isPadShot = true;
+}
+
+
+//////////////////////////////////
+
 function drawBricks() {
 	for(var l = 0; l < bricks.length; l++) {
 		for (var b = 0; b < bricks[l].length; b++) {
-			if (bricks[l][b].value != "0") {
+			if (bricks[l][b] != null && bricks[l][b].value != "0") {
 				drawBrick(bricks[l][b]);
 			}	
 		}
@@ -207,6 +248,9 @@ window.addEventListener("keydown", function (e) {
 		if (stop) {
 			doRestart();
 		}
+		else if (this.manager.pad.isPadShot) {
+			this.manager.shoot();
+		}
 	}
 	
   	if (e.keyCode == 37) {
@@ -228,6 +272,8 @@ window.addEventListener("keyup", function (e) {
 function init(){
 	manager = new Manager();
   clearInterval(tev);
+  clearAllIntervals();
+  ctx.clearRect(boxx, boxy, boxwidth, boxheight);
   var level = "level" + currentLevel + ".txt";
   stop = true;
   loadFile(level, fillBricks);
@@ -251,8 +297,13 @@ function init(){
 
 function playLoop() {
 	whatKey();
+	//ctx.clearRect(boxx, boxy, boxwidth, boxheight);
 	manager.movePad();
-	requestId = requestAnimationFrame(playLoop);
+	moveBall();
+	//drawBricks();
+	if (!stop) {
+		requestId = requestAnimationFrame(playLoop);
+	}
 }
   
   
@@ -269,7 +320,7 @@ function doRestart() {
 	init();
 	stop = false;
 	//document.getElementById("btn").innerText = "stop";
-	tev = setInterval(moveBall, ballSpeed);
+	//tev = setInterval(moveBall, ballSpeed);
 	playLoop();
 }
 
@@ -278,7 +329,9 @@ function doStop() {
 	stop = true;
 	window.cancelAnimationFrame(requestId);
 	clearInterval(tev);
-	clearInterval(tevBonus);
+	clearAllIntervals();
+	//clearInterval(tevBonus);
+	//clearInterval(tevShoot);
 	//document.getElementById("btn").innerText = "restart";
 	//window.removeEventListener('keydown', getKeyAndMove, false);
 
@@ -320,19 +373,19 @@ Manager.prototype = {
 		inboxboundx = boxx + ballrad;
 		inboxboundy = boxy + ballrad;
 		
+		
 		//this.drawBackground();
 		this.myball.draw();
 		drawBricks();
 		this.pad.draw();
 		//ctx.fill();
 	},
-	drawBackground: function() {
-		//ctx.drawImage(this.image, boxx, boxy, boxwidth, boxheight);
-	},
 	movePad: function() {
+		this.pad.clear();
 		this.pad.move();
 	},
 	moveBall: function() {
+		this.myball.clear();
 		this.moveandcheck();
 		this.myball.move();
 		drawBricks();
@@ -344,8 +397,8 @@ Manager.prototype = {
 		// ... et en y
 		var nbally = this.myball.posY + this.myball.posvY;
 		
-		var brick = this.getBrick(nballx, nbally);
-		var isBrick = this.checkBrick(brick);
+		var brick = getBrick(nballx, nbally);
+		var isBrick = checkBrick(brick);
 		
 		var win = false;
 
@@ -490,18 +543,38 @@ Manager.prototype = {
 		}
 		
 	},
-	getBrick : function(nposx, nposy) {
+	shoot: function() {
+		var shoot = new Shoot(this.pad.padX + Math.floor(this.pad.padWidth / 2), this.pad.padY);
+		shoots.push(shoot);
+		shoot.doShoot();
+
+		var b = getBrick(this.padShotX, this.padShotY);
+		var isBrick = checkBrick(b);
+		if (isBrick) {
+			clearInterval(this.tevShoot);
+			var i = shoots.indexOf(this);
+			shoots.splice(i, 1);
+			this.clearShoot();
+		}
+	},
+	clearShoot: function() {
+		ctx.clearRect(Math.floor(this.padShotX) - 5, Math.floor(this.padShotY), 6, this.shotSpeed);
+	}
+}
+
+function getBrick(nposx, nposy) {
 		var brick = null;
-		var x = Math.floor((nposx + this.myball.rad / 4 - boxx) / brickWidth);
-		var y = Math.floor((nposy + this.myball.rad / 4 - boxy) / brickHeight);
+		var x = Math.floor((nposx + ballrad / 4 - boxx) / brickWidth);
+		var y = Math.floor((nposy + ballrad / 4 - boxy) / brickHeight);
 		
 		if (x >= 0 && y >= 0) {
 			brick = bricks[y][x];
 		}
 		
 		return brick;
-	},
-	checkBrick: function(brick) {
+	}
+	
+function checkBrick(brick) {
 		var isBrick = false;
 		if (brick != null) {
 			isBrick = brick.value != "0";
@@ -516,6 +589,7 @@ Manager.prototype = {
 							brick.bonus.play();
 						}
 						brick.value = "0";
+						brick.clear();
 						totalBricksHit += 1;
 					}
 				}
@@ -524,8 +598,64 @@ Manager.prototype = {
 
 		return isBrick;
 	}
+
+function Shoot(posX, posY) {
+	this.padShotX = posX;
+	this.padShotY = posY;
+	this.shotSpeed = 10;
+	this.tevShoot;
 }
 
+Shoot.prototype = {
+	doShoot: function(){
+		//if (this.pad.isPadShot) {
+		
+			this.tevShoot = setInterval(
+				     (function(self) {         //Self-executing func which takes 'this' as self
+				         return function() {   //Return a function in the context of 'self'
+				             self.draw(); //Thing you wanted to run as non-window 'this'
+				         }
+				     })(this),
+				     30//this.INTERVAL     //normal interval, 'this' scope not impacted here.
+			); 
+		//}
+	},
+	draw: function() {
+		this.clear();
+		
+		ctx.beginPath();
+			
+		//this.shotSpeed += 1;
+		if (this.padShotY > boxy) {
+			ctx.moveTo(this.padShotX, this.padShotY);
+			ctx.lineTo(this.padShotX, this.padShotY - this.shotSpeed);
+			ctx.stroke();
+			this.padShotY = this.padShotY - this.shotSpeed;
+		}
+		else {
+			clearInterval(this.tevShoot);
+		}
+		
+		ctx.closePath();
+		
+		var b = getBrick(this.padShotX, this.padShotY);
+		var isBrick = checkBrick(b);
+		if (isBrick) {
+			clearInterval(this.tevShoot);
+			this.clear();
+		}
+		
+		var win = winGame();
+		if (win) {
+			alert("Gagné!");
+			currentLevel += 1;
+			doStop();
+		}
+	},
+	clear: function() {
+		ctx.clearRect(Math.floor(this.padShotX) - 5, Math.floor(this.padShotY), 6, this.shotSpeed);
+	}
+}
 
 function Ball(x,y,rad) {
 	this.posX = x;
@@ -539,7 +669,7 @@ function Ball(x,y,rad) {
 
 Ball.prototype = {
 	move: function() {
-		this.clear();
+		//this.clear();
 		//this.moveandcheck();
 		this.draw();
 	},
@@ -552,8 +682,8 @@ Ball.prototype = {
 		
 	},
 	clear: function() {
-		ctx.clearRect(boxx, boxy, boxwidth, boxheight);
-		//ctx.clearRect(boxx, boxy, this.rad *2, this.rad * 2);
+		//ctx.clearRect(boxx, boxy, boxwidth, boxheight);
+		ctx.clearRect(Math.floor(this.posX), this.posY, this.rad * 2, this.rad * 2);
 	}
 }
  
@@ -563,7 +693,8 @@ function Pad(x,y,width,height) {
 	this.padWidth = width;
 	this.padHeight = height;
 	this.image = new Image();
-	this.image.src = 'pad.gif';
+	//this.image.src = padImg;
+	this.isPadShot = false;
 }
 
 Pad.prototype = {
@@ -582,18 +713,24 @@ Pad.prototype = {
 			ncursorx = boxwidth + boxx - this.padWidth - ballrad;
 		}
 
-		this.clear();
+		//this.clear();
 		this.padX = ncursorx;
 		this.draw();
 		
 		velX = 0;
 	},
 	draw: function() {
-		//ctx.fillRect(this.padX, this.padY, this.padWidth, this.padHeight);
+		if (this.isPadShot) {
+			this.image.src = padShotImg;
+		}
+		else {
+			this.image.src = padImg;
+		}
+		
 		ctx.drawImage(this.image, this.padX, this.padY, this.padWidth, this.padHeight);
 	},
 	clear: function() {
-		//ctx.clearRect(this.padX - ball.rad + 1, this.padY - 1, this.padWidth + ball.rad + 1, this.padHeight * 2);
+		ctx.clearRect(Math.floor(this.padX), Math.floor(this.padY), this.padWidth, this.padHeight);
 	}
 }
 
