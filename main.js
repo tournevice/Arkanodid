@@ -165,7 +165,7 @@ function fillBricks(oData) {
 				bricks[l][b] = new brick(levels[l][b], b, l);
 				if (levels[l][b] != "x") {
 					var randomnumber = Math.floor(Math.random() * brickBonus.length);
-					if (levels[l][b] >= 1) {
+					if (levels[l][b] >= 2) {
 						bricks[l][b].bonus = new bonus('bonus1', brickBonus[randomnumber], bricks[l][b].posXInf, bricks[l][b].posYSup);
 						bonuss.push(bricks[l][b].bonus);
 					}
@@ -197,31 +197,46 @@ function clearAllIntervals() {
 //////////////////////////////////
 
 function bonusScore() {
-	score += 15;
+	$("#bonusDescription").fadeIn();
+	document.getElementById("bonusDescription").innerText = "double score!!";
+	score *= 2;
 	document.getElementById("currentScore").innerText = score;
+	$("#bonusDescription").fadeOut();
 }
 
 function bonusShot() {
+	$("#bonusDescription").fadeIn();
+	document.getElementById("bonusDescription").innerText = "Shooting bonus!!";
 	manager.pad.isPadShot = true;
+	$("#bonusDescription").fadeOut();
 }
 
 function bonusBall() {
+	$("#bonusDescription").fadeIn();
+	document.getElementById("bonusDescription").innerText = "Multiple balls!!";
 	var posBallX = manager.pad.padX + (padWidth / 2);
 	var posBallY = manager.pad.padY - 20;
 
 	var ball = new Ball(posBallX, posBallY, ballrad);
 	ball.play();
+	$("#bonusDescription").fadeOut();
 }
 
 function bonusSuperBall() {
+	$("#bonusDescription").fadeIn();
+	document.getElementById("bonusDescription").innerText = "Super ball!!";
 	for (var b = 0; b < balls.length; b++) {
 		balls[b].doSuperball();
 	}
+	$("#bonusDescription").fadeOut();
 }
 
 function bonusLife() {
+	$("#bonusDescription").fadeIn();
+	document.getElementById("bonusDescription").innerText = "One Up!!";
 	lives += 1;
 	document.getElementById("lives").innerText = lives;
+	$("#bonusDescription").fadeOut();
 }
 
 
@@ -306,6 +321,7 @@ function init(){
 	manager = new Manager();
   //clearInterval(tev);
   clearAllIntervals();
+  balls = [];
   ctx.clearRect(boxx, boxy, boxwidth, boxheight);
   
   if (lost && lives == 0) {
@@ -477,7 +493,7 @@ function moveandcheck(ball, pad) {
 
 		if (isBrick) {
 			// limite droite de la brique
-			if (!ball.superball && nbally > brick.inbrickboundy && nbally < brick.brickboundy) {
+			if ((!ball.superball || (ball.superball && brick.value == 'x')) && nbally > brick.inbrickboundy && nbally < brick.brickboundy) {
 				ball.posvX = -ball.posvX;
 				nballx = ball.posX;
 			}
@@ -489,7 +505,7 @@ function moveandcheck(ball, pad) {
 			//}
 			//else
 			// limite supérieure de la brique
-			else if (!ball.superball && nbally>= brick.inbrickboundy) {
+			else if ((!ball.superball || (ball.superball && brick.value == 'x')) && nbally>= brick.inbrickboundy) {
 				//ball.posvY = angleY;
 				//nbally = ball.posY - ball.posvY;
 				ball.posvY = -ball.posvY;
@@ -497,7 +513,7 @@ function moveandcheck(ball, pad) {
 			}
 			//else
 			// limite inférieure de la brique
-			else if (!ball.superball && nbally <= brick.brickboundy) {
+			else if ((!ball.superball || (ball.superball && brick.value == 'x')) && nbally <= brick.brickboundy) {
 				//ball.posvY = angleY;
 				//nbally = ball.posY - ball.posvY;
 				ball.posvY = -ball.posvY;
@@ -602,6 +618,7 @@ function moveandcheck(ball, pad) {
 			if (win)
 			{
 				alert("Gagné!");
+				ball.id = -1;
 				currentLevel += 1;
 				resetLevel = true;
 				doStop();

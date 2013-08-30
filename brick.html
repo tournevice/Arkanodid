@@ -16,6 +16,8 @@
 			#btn { border: 1px solid black; width:50; height: 20; align: left;}
 			#score { float:right; width:500px; margin-top: 200; }
 		</style>
+		<script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+  		<script src="http://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
 		<script type="text/javascript" src="tools.js"></script>
 		<script type="text/javascript" src="main.js"></script>
 	</header>
@@ -25,6 +27,7 @@
 			<span style="margin-left: 60">Score : <span id="currentScore">0</span></span>
 			<span style="margin-left: 90">Vies : <span id="lives">3</span></span>
 			<span style="float: right;margin-right: 5">Niveau : <span id="currentLevel">1</span></span>
+			<span id="bonusDescription" style="display:block; margin-top: 270px; margin-left: 200; z-index: 99; position: absolute">&nbsp;</span>
 			<canvas id="canvas" width="400" height="330">
 				canvas non supporté
 			</canvas>
