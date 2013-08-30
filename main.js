@@ -7,7 +7,7 @@ var boxy = 10;
 var boxwidth = 400;
 var boxheight = 320;
 var bricks;
-var brickBonus = [bonusScore, bonusShot];
+var brickBonus = [bonusScore, bonusShot, bonusBall, bonusSuperBall, bonusLife];
 var score = 0;
 var highscore = 0;
 var totalBricks;
@@ -21,6 +21,7 @@ var brickHeight = 20;
 var padWidth = 50;
 var padHeight = 10
 var ballrad = 4;
+var superballrad = 6;
 var bonusWidth = 15;
 var bonusHeight = 10;
 
@@ -33,14 +34,22 @@ var cursor;
 var requestId;
 
 var ballSpeed = 15;
-var bonusSpeed = 20;
+var superballSpeed = 10;
+var bonusSpeed = 17;
 var lost = false;
+var bonusDuration = 5000;
 
 var padImg = 'pad.gif';
 var padShotImg = 'pad_shot.gif';
+var ballImg = 'ball.gif';
+var superBallImg = 'superball.gif';
 
 var shoots = [];
 var bonuss = [];
+var balls = [];
+
+var lives = 3;
+var resetLevel = true;
 
 /************************************/
 /* General functions                */
@@ -156,10 +165,10 @@ function fillBricks(oData) {
 				bricks[l][b] = new brick(levels[l][b], b, l);
 				if (levels[l][b] != "x") {
 					var randomnumber = Math.floor(Math.random() * brickBonus.length);
-					//if (levels[l][b] == 2) {
-						bricks[l][b].bonus = new bonus('bonus1', brickBonus[1], bricks[l][b].posXInf, bricks[l][b].posYSup);
+					if (levels[l][b] >= 1) {
+						bricks[l][b].bonus = new bonus('bonus1', brickBonus[randomnumber], bricks[l][b].posXInf, bricks[l][b].posYSup);
 						bonuss.push(bricks[l][b].bonus);
-					//}
+					}
 					cntBricks += 1;
 				}
 			}
@@ -169,6 +178,11 @@ function fillBricks(oData) {
 }
 
 function clearAllIntervals() {
+	for (var s = 0; s < balls.length; s++) {
+		clearInterval(balls[s].tev);
+		clearTimeout(balls[s].tevTimeOut);
+	}
+	
 	for (var s = 0; s < shoots.length; s++) {
 		clearInterval(shoots[s].tevShoot);
 	}
@@ -189,6 +203,25 @@ function bonusScore() {
 
 function bonusShot() {
 	manager.pad.isPadShot = true;
+}
+
+function bonusBall() {
+	var posBallX = manager.pad.padX + (padWidth / 2);
+	var posBallY = manager.pad.padY - 20;
+
+	var ball = new Ball(posBallX, posBallY, ballrad);
+	ball.play();
+}
+
+function bonusSuperBall() {
+	for (var b = 0; b < balls.length; b++) {
+		balls[b].doSuperball();
+	}
+}
+
+function bonusLife() {
+	lives += 1;
+	document.getElementById("lives").innerText = lives;
 }
 
 
@@ -271,36 +304,45 @@ window.addEventListener("keyup", function (e) {
 
 function init(){
 	manager = new Manager();
-  clearInterval(tev);
+  //clearInterval(tev);
   clearAllIntervals();
   ctx.clearRect(boxx, boxy, boxwidth, boxheight);
-  var level = "level" + currentLevel + ".txt";
-  stop = true;
-  loadFile(level, fillBricks);
   
+  if (lost && lives == 0) {
+  	currentLevel = 1;
+  	lives = 3;
+	score = 0;
+  	resetLevel = true;
+  }
+  
+  if (resetLevel) {
+	  totalBricksHit = 0;
+	  var level = "level" + currentLevel + ".txt";
+	  loadFile(level, fillBricks);
+  }
+  
+  stop = true;
   document.getElementById("area").style.backgroundImage = "url('background_level" + currentLevel + ".gif')";
   //ctx.strokeRect(boxx, boxy, boxwidth, boxheight);
 	manager.init();
 	if (score > highscore) {
 		highscore = score;
 	}
-	if (lost) {
-		score = 0;
-	}
-	
-	totalBricksHit = 0;
+
 	lost = false;
 	document.getElementById("highscore").innerText = highscore;
 	document.getElementById("currentScore").innerText = score;
 	document.getElementById("currentLevel").innerText = currentLevel;
+	document.getElementById("lives").innerText = lives;
+	
 }
 
 function playLoop() {
 	whatKey();
 	//ctx.clearRect(boxx, boxy, boxwidth, boxheight);
 	manager.movePad();
-	moveBall();
-	//drawBricks();
+	//moveBall();
+	drawBricks();
 	if (!stop) {
 		requestId = requestAnimationFrame(playLoop);
 	}
@@ -317,10 +359,11 @@ var velX = 0;
 var maxSpeed = 5;
 
 function doRestart() {
-	init();
+	//init();
 	stop = false;
 	//document.getElementById("btn").innerText = "stop";
 	//tev = setInterval(moveBall, ballSpeed);
+	manager.moveBall();
 	playLoop();
 }
 
@@ -328,8 +371,9 @@ function doStop() {
 	//init();
 	stop = true;
 	window.cancelAnimationFrame(requestId);
-	clearInterval(tev);
+	//clearInterval(tev);
 	clearAllIntervals();
+	init();
 	//clearInterval(tevBonus);
 	//clearInterval(tevShoot);
 	//document.getElementById("btn").innerText = "restart";
@@ -372,7 +416,8 @@ Manager.prototype = {
 		boxboundy = this.pad.padY - ballrad;
 		inboxboundx = boxx + ballrad;
 		inboxboundy = boxy + ballrad;
-		
+		this.doubleBall = false;
+		this.tevTimeout;
 		
 		//this.drawBackground();
 		this.myball.draw();
@@ -385,50 +430,78 @@ Manager.prototype = {
 		this.pad.move();
 	},
 	moveBall: function() {
-		this.myball.clear();
-		this.moveandcheck();
-		this.myball.move();
-		drawBricks();
+		//this.myball.clear();
+		//moveandcheck(this.myball, this.pad);
+		this.myball.play();
+		//drawBricks();
 	},
-	moveandcheck: function() {
+	shoot: function() {
+		var shoot = new Shoot(this.pad.padX + Math.floor(this.pad.padWidth / 2), this.pad.padY);
+		shoots.push(shoot);
+		shoot.doShoot();
+		this.tevTimeout = setTimeout(
+				     (function(self) {         //Self-executing func which takes 'this' as self
+				         return function() {   //Return a function in the context of 'self'
+				             self.resetPad(); //Thing you wanted to run as non-window 'this'
+				         }
+				     })(this),
+				     bonusDuration//this.INTERVAL     //normal interval, 'this' scope not impacted here.
+			); 
+
+		//var b = getBrick(this.padShotX, this.padShotY);
+		//var isBrick = checkBrick(b);
+		//if (isBrick) {
+		//	clearInterval(this.tevShoot);
+		//	var i = shoots.indexOf(this);
+		//	shoots.splice(i, 1);
+		//	this.clearShoot();
+		//}
+	},
+	resetPad: function() {
+		clearInterval(this.tevTimeout);
+		this.pad.isPadShot = false;
+	}
+}
+
+function moveandcheck(ball, pad) {
 		// on anticipe le d�placement de la balle
 		// en x...
-		var nballx = this.myball.posX + this.myball.posvX;
+		var nballx = ball.posX + ball.posvX;
 		// ... et en y
-		var nbally = this.myball.posY + this.myball.posvY;
+		var nbally = ball.posY + ball.posvY;
 		
 		var brick = getBrick(nballx, nbally);
-		var isBrick = checkBrick(brick);
+		var isBrick = checkBrick(brick, ball.damages);
 		
 		var win = false;
 
 		if (isBrick) {
 			// limite droite de la brique
-			if (nbally > brick.inbrickboundy && nbally < brick.brickboundy) {
-				this.myball.posvX = -this.myball.posvX;
-				nballx = this.myball.posX;
+			if (!ball.superball && nbally > brick.inbrickboundy && nbally < brick.brickboundy) {
+				ball.posvX = -ball.posvX;
+				nballx = ball.posX;
 			}
 			//else
 			// limite gauche de la brique
 			//if (nballx >= brick.inbrickboundx) {
-			//	this.myball.posvX = -this.myball.posvX;
-			//	nballx = this.myball.posX;
+			//	ball.posvX = -ball.posvX;
+			//	nballx = ball.posX;
 			//}
 			//else
 			// limite supérieure de la brique
-			else if (nbally>= brick.inbrickboundy) {
-				//this.myball.posvY = angleY;
-				//nbally = this.myball.posY - this.myball.posvY;
-				this.myball.posvY = -this.myball.posvY;
-				nbally = this.myball.posY;
+			else if (!ball.superball && nbally>= brick.inbrickboundy) {
+				//ball.posvY = angleY;
+				//nbally = ball.posY - ball.posvY;
+				ball.posvY = -ball.posvY;
+				nbally = ball.posY;
 			}
 			//else
 			// limite inférieure de la brique
-			else if (nbally <= brick.brickboundy) {
-				//this.myball.posvY = angleY;
-				//nbally = this.myball.posY - this.myball.posvY;
-				this.myball.posvY = -this.myball.posvY;
-				nbally = this.myball.posY;
+			else if (!ball.superball && nbally <= brick.brickboundy) {
+				//ball.posvY = angleY;
+				//nbally = ball.posY - ball.posvY;
+				ball.posvY = -ball.posvY;
+				nbally = ball.posY;
 			}
 			
 			win = winGame();
@@ -436,90 +509,90 @@ Manager.prototype = {
 		else {
 			// Rebond droit
 			if (nballx > boxboundx) {
-				this.myball.posvX = -this.myball.posvX;
+				ball.posvX = -ball.posvX;
 				nballx = boxboundx;
 			}
 			
 			// Rebond gauche
 			if (nballx < inboxboundx) {
 				nballx = inboxboundx;
-				this.myball.posvX = -this.myball.posvX;
+				ball.posvX = -ball.posvX;
 			}
 			
 			// Rebond haut
 			if (nbally < inboxboundy) {
 				nbally = inboxboundy;						
-				this.myball.posvY = -this.myball.posvY;
+				ball.posvY = -ball.posvY;
 			}
 				
 			// Rebond bas (pad ou vide)
 			if (nbally > boxboundy) {
-				if (nballx < this.pad.padX - this.myball.rad || nballx > this.pad.padX + this.pad.padWidth + this.myball.rad) {
+				if (nballx < pad.padX - ball.rad || nballx > pad.padX + pad.padWidth + ball.rad) {
 					lost = true;
 				}
 				else {
 					nbally = boxboundy;
 					
-					var angle10Left = this.pad.padX + (this.pad.padWidth * (10/100));
-					var angle20Left = this.pad.padX + (this.pad.padWidth* (20/100));
-					var angle30Left = this.pad.padX + (this.pad.padWidth* (30/100));
-					var angle10Right = this.pad.padX + this.pad.padWidth - (this.pad.padWidth * (10/100));
-					var angle20Right = this.pad.padX + this.pad.padWidth - (this.pad.padWidth* (20/100));
-					var angle30Right = this.pad.padX + this.pad.padWidth - (this.pad.padWidth* (30/100));
+					var angle10Left = pad.padX + (pad.padWidth * (10/100));
+					var angle20Left = pad.padX + (pad.padWidth* (20/100));
+					var angle30Left = pad.padX + (pad.padWidth* (30/100));
+					var angle10Right = pad.padX + pad.padWidth - (pad.padWidth * (10/100));
+					var angle20Right = pad.padX + pad.padWidth - (pad.padWidth* (20/100));
+					var angle30Right = pad.padX + pad.padWidth - (pad.padWidth* (30/100));
 
-					if (((this.myball.posX >= angle20Left && this.myball.posX < angle30Left) && this.myball.posvX > 0) || ((this.myball.posX >= angle30Right && this.myball.posX < angle20Right) && this.myball.posvX < 0 )) {
-						if ((this.myball.posX >= angle20Left && this.myball.posX < angle30Left) && this.myball.posvX > 0) {
-							this.myball.posvX = -(Math.abs(angleX) + 1);
-							this.myball.posvY = -(Math.abs(angleY) - 1);
+					if (((ball.posX >= angle20Left && ball.posX < angle30Left) && ball.posvX > 0) || ((ball.posX >= angle30Right && ball.posX < angle20Right) && ball.posvX < 0 )) {
+						if ((ball.posX >= angle20Left && ball.posX < angle30Left) && ball.posvX > 0) {
+							ball.posvX = -(Math.abs(angleX) + 1);
+							ball.posvY = -(Math.abs(angleY) - 1);
 						}
-						if ((this.myball.posX >= angle30Right && this.myball.posX < angle20Right) && this.myball.posvX < 0) {
+						if ((ball.posX >= angle30Right && ball.posX < angle20Right) && ball.posvX < 0) {
 							
-							this.myball.posvX = Math.abs(angleX) + 1;
-							this.myball.posvY = -(Math.abs(angleY) - 1);
+							ball.posvX = Math.abs(angleX) + 1;
+							ball.posvY = -(Math.abs(angleY) - 1);
 						}
 						
-						nballx = this.myball.posX + this.myball.posvX;
-						nbally = this.myball.posY + this.myball.posvY;
+						nballx = ball.posX + ball.posvX;
+						nbally = ball.posY + ball.posvY;
 					}
-					else if (((this.myball.posX >= angle10Left && this.myball.posX < angle20Left) && this.myball.posvX > 0) || ((this.myball.posX >= angle20Right && this.myball.posX < angle10Right) && this.myball.posvX < 0 )) {
-						if ((this.myball.posX >= angle10Left && this.myball.posX < angle20Left) && this.myball.posvX > 0) {
-							this.myball.posvX = -(Math.abs(angleX) + 2);
-							this.myball.posvY = -(Math.abs(angleY) - 2);
+					else if (((ball.posX >= angle10Left && ball.posX < angle20Left) && ball.posvX > 0) || ((ball.posX >= angle20Right && ball.posX < angle10Right) && ball.posvX < 0 )) {
+						if ((ball.posX >= angle10Left && ball.posX < angle20Left) && ball.posvX > 0) {
+							ball.posvX = -(Math.abs(angleX) + 2);
+							ball.posvY = -(Math.abs(angleY) - 2);
 						}
-						if ((this.myball.posX >= angle20Right && this.myball.posX < angle10Right) && this.myball.posvX < 0) {
+						if ((ball.posX >= angle20Right && ball.posX < angle10Right) && ball.posvX < 0) {
 							
-							this.myball.posvX = Math.abs(angleX) + 2;
-							this.myball.posvY = -(Math.abs(angleY) - 2);
+							ball.posvX = Math.abs(angleX) + 2;
+							ball.posvY = -(Math.abs(angleY) - 2);
 						}
 						
-						nballx = this.myball.posX + this.myball.posvX;
-						nbally = this.myball.posY + this.myball.posvY;
+						nballx = ball.posX + ball.posvX;
+						nbally = ball.posY + ball.posvY;
 					}
-					else if ((nballx < angle10Left && this.myball.posvX > 0) || (nballx > angle10Right && this.myball.posvX < 0 )) {
-						if (nballx < angle10Left && this.myball.posvX > 0) {
-							this.myball.posvX = -(Math.abs(angleX) + 3);
-							this.myball.posvY = -(Math.abs(angleY) - 3);
+					else if ((nballx < angle10Left && ball.posvX > 0) || (nballx > angle10Right && ball.posvX < 0 )) {
+						if (nballx < angle10Left && ball.posvX > 0) {
+							ball.posvX = -(Math.abs(angleX) + 3);
+							ball.posvY = -(Math.abs(angleY) - 3);
 						}
-						if (nballx > angle10Right && this.myball.posvX < 0) {
+						if (nballx > angle10Right && ball.posvX < 0) {
 							
-							this.myball.posvX = Math.abs(angleX) + 3;
-							this.myball.posvY = -(Math.abs(angleY) - 3);
+							ball.posvX = Math.abs(angleX) + 3;
+							ball.posvY = -(Math.abs(angleY) - 3);
 						}
 						
-						nballx = this.myball.posX + this.myball.posvX;
-						nbally = this.myball.posY + this.myball.posvY;
+						nballx = ball.posX + ball.posvX;
+						nbally = ball.posY + ball.posvY;
 					}
 					else {
-						this.myball.posvY = angleY;
-						if (this.myball.posvX < 0) {
-							this.myball.posvX = -angleX;
+						ball.posvY = angleY;
+						if (ball.posvX < 0) {
+							ball.posvX = -angleX;
 						}
 						else {
-							this.myball.posvX = angleX;
+							ball.posvX = angleX;
 						}
-						nbally = this.myball.posY + this.myball.posvY;
-						nabllx = this.myball.posX + this.myball.posvX;
-						//this.myball.posvX = -this.myball.posvX;
+						nbally = ball.posY + ball.posvY;
+						nabllx = ball.posX + ball.posvX;
+						//ball.posvX = -ball.posvX;
 					}
 				}
 			}
@@ -530,37 +603,32 @@ Manager.prototype = {
 			{
 				alert("Gagné!");
 				currentLevel += 1;
+				resetLevel = true;
 				doStop();
 			}
 			else {
-				this.myball.posX = nballx;
-				this.myball.posY = nbally;
+				ball.posX = nballx;
+				ball.posY = nbally;
 			}
 		}
 		else {
-			alert("Perdu! :(");
-			doStop();
+			clearInterval(ball.tev);
+			clearTimeout(ball.tevTimeOut);
+			var i = balls.indexOf(ball);
+			balls.splice(i, 1);
+			ball.id = -1;
+			if (balls.length == 0) {
+				lives -= 1;
+				resetLevel = false;
+				alert("Perdu! :(");
+				doStop();
+			}
+			else {
+				lost = false;
+			}
 		}
 		
-	},
-	shoot: function() {
-		var shoot = new Shoot(this.pad.padX + Math.floor(this.pad.padWidth / 2), this.pad.padY);
-		shoots.push(shoot);
-		shoot.doShoot();
-
-		var b = getBrick(this.padShotX, this.padShotY);
-		var isBrick = checkBrick(b);
-		if (isBrick) {
-			clearInterval(this.tevShoot);
-			var i = shoots.indexOf(this);
-			shoots.splice(i, 1);
-			this.clearShoot();
-		}
-	},
-	clearShoot: function() {
-		ctx.clearRect(Math.floor(this.padShotX) - 5, Math.floor(this.padShotY), 6, this.shotSpeed);
 	}
-}
 
 function getBrick(nposx, nposy) {
 		var brick = null;
@@ -574,7 +642,7 @@ function getBrick(nposx, nposy) {
 		return brick;
 	}
 	
-function checkBrick(brick) {
+function checkBrick(brick, damages) {
 		var isBrick = false;
 		if (brick != null) {
 			isBrick = brick.value != "0";
@@ -583,8 +651,8 @@ function checkBrick(brick) {
 				if (brick.value != "x") {
 					score += parseInt(brick.value);
 					document.getElementById("currentScore").innerText = score;
-					brick.currentBreaks += 1;
-					if (brick.currentBreaks == brick.value) {
+					brick.currentBreaks += damages;
+					if (brick.currentBreaks >= brick.value) {
 						if (brick.bonus != null) {
 							brick.bonus.play();
 						}
@@ -604,6 +672,7 @@ function Shoot(posX, posY) {
 	this.padShotY = posY;
 	this.shotSpeed = 10;
 	this.tevShoot;
+	this.damages = 1;
 }
 
 Shoot.prototype = {
@@ -618,6 +687,7 @@ Shoot.prototype = {
 				     })(this),
 				     30//this.INTERVAL     //normal interval, 'this' scope not impacted here.
 			); 
+			
 		//}
 	},
 	draw: function() {
@@ -634,14 +704,19 @@ Shoot.prototype = {
 		}
 		else {
 			clearInterval(this.tevShoot);
+			var i = shoots.indexOf(this);
+			shoots.splice(i, 1);
+			this.clear();
 		}
 		
 		ctx.closePath();
 		
 		var b = getBrick(this.padShotX, this.padShotY);
-		var isBrick = checkBrick(b);
+		var isBrick = checkBrick(b, this.damages);
 		if (isBrick) {
 			clearInterval(this.tevShoot);
+			var i = shoots.indexOf(this);
+			shoots.splice(i, 1);
 			this.clear();
 		}
 		
@@ -663,8 +738,15 @@ function Ball(x,y,rad) {
 	this.posvX = angleX;
 	this.posvY = angleY;
 	this.rad = rad;
+	this.speed = ballSpeed;
 	this.image = new Image();
 	this.image.src = 'ball.gif';
+	this.damages = 1;
+	this.superball = false;
+	this.tev;
+	this.tevTimeOut;
+	balls.push(this);
+	this.id = balls.length;
 }
 
 Ball.prototype = {
@@ -673,6 +755,26 @@ Ball.prototype = {
 		//this.moveandcheck();
 		this.draw();
 	},
+	moveBall: function() {
+		this.clear();
+		moveandcheck(this, manager.pad);
+		if (this.id == -1) {
+			this.clear();
+		}
+		else {
+			this.move();
+		}
+	},
+	play: function() {
+		this.tev = setInterval(
+			     (function(self) {         //Self-executing func which takes 'this' as self
+			         return function() {   //Return a function in the context of 'self'
+			             self.moveBall(); //Thing you wanted to run as non-window 'this'
+			         }
+			     })(this),
+			     this.speed     //normal interval, 'this' scope not impacted here.
+			 ); 
+	},
 	draw: function() {
 		//ctx.fillStyle = "black";
 		//ctx.beginPath();
@@ -680,6 +782,38 @@ Ball.prototype = {
 		ctx.drawImage(this.image, this.posX, this.posY, this.rad * 2, this.rad * 2);
 		//ctx.fill();
 		
+	},
+	doSuperball: function() {
+		if (!this.superball) {
+			this.image.src = superBallImg;
+			this.rad = superballrad;
+			this.damages = 99;
+			this.superball = true;
+			this.speed = superballSpeed;
+			
+			clearInterval(this.tev);
+			this.play();
+			
+			this.tevTimeOut = setTimeout(
+					     (function(self) {         //Self-executing func which takes 'this' as self
+					         return function() {   //Return a function in the context of 'self'
+					             self.resetBall(); //Thing you wanted to run as non-window 'this'
+					         }
+					     })(this),
+					     bonusDuration//this.INTERVAL     //normal interval, 'this' scope not impacted here.
+				); 
+		}
+	},
+	resetBall: function() {
+		this.clear();
+		this.image.src = ballImg;
+		this.rad = ballrad;
+		this.superball = false;
+		this.speed = ballSpeed;
+		
+		clearTimeout(this.tevTimeOut);
+		clearInterval(this.tev);
+		this.play();
 	},
 	clear: function() {
 		//ctx.clearRect(boxx, boxy, boxwidth, boxheight);
